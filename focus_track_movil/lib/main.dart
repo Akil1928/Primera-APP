@@ -1,7 +1,22 @@
+// Práctica 13 - IF0009 Desarrollo de Software IV
+// Carnet: C4L113
 import 'package:flutter/material.dart';
 
 void main() {
   runApp(const FocusTrackApp());
+}
+
+/// Niveles de prioridad de la sesión, con su color y descripción asociados
+enum Prioridad {
+  baja('Baja', Color(0xFF78909C), 'Ritmo tranquilo: avance sin presión.'),
+  media('Media', Color(0xFFEF6C00), 'Ritmo sostenido: mantenga el enfoque.'),
+  alta('Alta', Color(0xFF800020), 'Máxima urgencia: priorice sus metas.');
+
+  const Prioridad(this.etiqueta, this.color, this.descripcion);
+
+  final String etiqueta;
+  final Color color;
+  final String descripcion;
 }
 
 /// Widget raiz inmutable que configura el tema visual de la aplicacion
@@ -16,7 +31,7 @@ class FocusTrackApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF00796B), // Azul Índigo Universitario
+          seedColor: const Color(0xFF00796B), // Verde Esmeralda
           brightness: Brightness.light,
         ),
         appBarTheme: const AppBarTheme(centerTitle: true, elevation: 2),
@@ -35,9 +50,13 @@ class PantallaPrincipalMetas extends StatefulWidget {
 }
 
 class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
+  /// Valor máximo permitido de metas diarias
+  static const int _limiteMaximo = 10;
+
   int _metasCompletadas = 0;
   final int _metaObjetivo = 5;
   String _nivelProductividad = 'Inicial';
+  Prioridad _prioridad = Prioridad.baja;
 
   void _actualizarNivel() {
     if (_metasCompletadas == 0) {
@@ -53,6 +72,21 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
   }
 
   void _incrementarMeta() {
+    // Bloqueo seguro: no se permite superar el límite diario
+    if (_metasCompletadas >= _limiteMaximo) {
+      ScaffoldMessenger.of(context)
+        ..hideCurrentSnackBar()
+        ..showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Ha alcanzado el límite máximo diario de metas (10/10). '
+              '¡Excelente jornada!',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      return;
+    }
     setState(() {
       _metasCompletadas++;
       _actualizarNivel();
@@ -65,6 +99,12 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
         _metasCompletadas--;
         _actualizarNivel();
       }
+    });
+  }
+
+  void _cambiarPrioridad(Prioridad nueva) {
+    setState(() {
+      _prioridad = nueva;
     });
   }
 
@@ -109,6 +149,7 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
     final tema = Theme.of(context);
     final colores = tema.colorScheme;
     final porcentaje = (_metasCompletadas / _metaObjetivo).clamp(0.0, 1.0);
+    final colorPrioridad = _prioridad.color;
 
     return Scaffold(
       appBar: AppBar(
@@ -196,6 +237,55 @@ class _PantallaPrincipalMetasState extends State<PantallaPrincipalMetas> {
                 ),
               ),
               const SizedBox(height: 24.0),
+              // RETO 1: Selector de Estado de Prioridad
+              Text(
+                'Prioridad de la sesión',
+                style: tema.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8.0),
+              SegmentedButton<Prioridad>(
+                showSelectedIcon: false,
+                segments: Prioridad.values
+                    .map(
+                      (p) => ButtonSegment<Prioridad>(
+                        value: p,
+                        label: Text(p.etiqueta),
+                      ),
+                    )
+                    .toList(),
+                selected: {_prioridad},
+                onSelectionChanged: (Set<Prioridad> seleccion) {
+                  _cambiarPrioridad(seleccion.first);
+                },
+                style: SegmentedButton.styleFrom(
+                  selectedBackgroundColor: colorPrioridad,
+                  selectedForegroundColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              // Panel de Informacion: refleja la prioridad elegida
+              Card(
+                elevation: 1.0,
+                color: colorPrioridad.withValues(alpha: 0.12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12.0),
+                  side: BorderSide(color: colorPrioridad, width: 1.5),
+                ),
+                child: ListTile(
+                  leading: Icon(Icons.flag, color: colorPrioridad),
+                  title: Text(
+                    'Prioridad ${_prioridad.etiqueta}',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: colorPrioridad,
+                    ),
+                  ),
+                  subtitle: Text(_prioridad.descripcion),
+                ),
+              ),
+              const SizedBox(height: 16.0),
               // Panel de Informacion Tecnica
               Card(
                 elevation: 1.0,
